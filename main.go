@@ -1,9 +1,13 @@
 package main
 
 import (
+	"database/sql"
 	"fmt"
 	"gator/internal/config"
+	"gator/internal/database"
 	"os"
+
+	_ "github.com/lib/pq"
 )
 
 func main() {
@@ -13,12 +17,22 @@ func main() {
 		return
 	}
 
-	s := &state{cfg: &cfg}
+	db, err := sql.Open("postgres", cfg.DBURL)
+	if err != nil {
+		fmt.Println("Error opening the database:", err)
+		return
+	}
+	dbQueries := database.New(db)
+
+	s := &state{cfg: &cfg, db: dbQueries}
 	c := &commands{
 		handlers: make(map[string]func(*state, command) error),
 	}
 
 	c.register("login", handlerLogin)
+	c.register("register", handlerRegister)
+	c.register("reset", handlerReset)
+	c.register("users", handlerUsers)
 
 	args := os.Args
 
@@ -36,6 +50,7 @@ func main() {
 		fmt.Println(err)
 		os.Exit(1)
 	}
+
 	// if err := cfg.SetUser("seva"); err != nil {
 	// 	fmt.Println("Error setting user:", err)
 	// 	return
