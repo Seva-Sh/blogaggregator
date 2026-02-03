@@ -25,14 +25,20 @@ func main() {
 	dbQueries := database.New(db)
 
 	s := &state{cfg: &cfg, db: dbQueries}
-	c := &commands{
+	cmd := &commands{
 		handlers: make(map[string]func(*state, command) error),
 	}
 
-	c.register("login", handlerLogin)
-	c.register("register", handlerRegister)
-	c.register("reset", handlerReset)
-	c.register("users", handlerUsers)
+	cmd.register("login", handlerLogin)
+	cmd.register("register", handlerRegister)
+	cmd.register("reset", handlerReset)
+	cmd.register("users", handlerUsers)
+	cmd.register("agg", handlerAgg)
+	cmd.register("addfeed", middlewareLoggedIn(handlerAddFeed))
+	cmd.register("feeds", handlerFeeds)
+	cmd.register("follow", middlewareLoggedIn(handlerFollow))
+	cmd.register("following", middlewareLoggedIn(handlerFollowing))
+	cmd.register("unfollow", middlewareLoggedIn(handlerUnfollow))
 
 	args := os.Args
 
@@ -45,7 +51,7 @@ func main() {
 		args: args[2:],
 	}
 
-	err = c.run(s, loginCommand)
+	err = cmd.run(s, loginCommand)
 	if err != nil {
 		fmt.Println(err)
 		os.Exit(1)
