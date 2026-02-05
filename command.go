@@ -7,6 +7,7 @@ import (
 	"gator/internal/config"
 	"gator/internal/database"
 	"os"
+	"strconv"
 	"strings"
 	"time"
 
@@ -130,14 +131,25 @@ func handlerUsers(s *state, cmd command) error {
 }
 
 func handlerAgg(s *state, cmd command) error {
-	ctx := context.Background()
-	url := "https://www.wagslane.dev/index.xml"
-	feed, err := fetchFeed(ctx, url)
-	if err != nil {
-		fmt.Println("failed to fetch feed")
-		return err
+	if len(cmd.args) != 1 {
+		return fmt.Errorf("usage: %v <time_between_reqs>", cmd.name)
 	}
-	fmt.Printf("%+v\n", feed)
+
+	timeBetweenRequests, err := time.ParseDuration(cmd.args[0])
+	if err != nil {
+		return fmt.Errorf("invalid duration: %w", err)
+	}
+
+	fmt.Printf("Collecting feeds every %s\n", timeBetweenRequests)
+
+	ticker := time.NewTicker(timeBetweenRequests)
+	defer ticker.Stop()
+	scrapeFeeds(s)
+	for ; ; <-ticker.C {
+		// ignore returned error of log it
+		scrapeFeeds(s)
+	}
+
 	return nil
 }
 
@@ -283,6 +295,34 @@ func handlerUnfollow(s *state, cmd command, user database.User) error {
 	}
 
 	fmt.Println("unfollow successfull")
+	return nil
+}
+
+func handlerBrowse(s *state, cmd command, user database.User) error {
+	limit := int32(2)
+	if len(cmd.args) > 0 {
+		n, err := strconv.Atoi(cmd.args[0])
+		if err != nil {
+			return fmt.Errorf("invalid limit: %v", err)
+		}
+		limit = int32(n)
+	}
+	ctx := context.Background()
+	posts, err := s.db.GetPostsForUser(ctx, database.GetPostsForUserParams{
+		UserID: user.ID,
+		Limit:  limit,
+	})
+	if err != nil {
+		fmt.Println("error getting posts")
+		return err
+	}
+
+	for _, post := range posts {
+		fmt.Println(post.Title)
+		fmt.Println(post.Url)
+		fmt.Println(post.PublishedAt)
+	}
+
 	return nil
 }
 
