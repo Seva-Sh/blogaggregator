@@ -149,8 +149,6 @@ func handlerAgg(s *state, cmd command) error {
 		// ignore returned error of log it
 		scrapeFeeds(s)
 	}
-
-	return nil
 }
 
 func handlerAddFeed(s *state, cmd command, user database.User) error {
